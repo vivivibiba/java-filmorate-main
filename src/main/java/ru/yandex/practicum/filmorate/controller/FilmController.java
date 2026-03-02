@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -10,7 +11,6 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.validator.FilmValidator;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -26,9 +26,7 @@ public class FilmController {
     private int nextId = 1;
 
     @PostMapping
-    public Film create(@RequestBody Film film) {
-        FilmValidator.validate(film);
-
+    public Film create(@Valid @RequestBody Film film) {
         film.setId(nextId++);
         films.put(film.getId(), film);
 
@@ -37,9 +35,7 @@ public class FilmController {
     }
 
     @PutMapping
-    public Film update(@RequestBody Film film) {
-        FilmValidator.validate(film);
-
+    public Film update(@Valid @RequestBody Film film) {
         if (film.getId() == null || film.getId() <= 0) {
             throw new ValidationException("Id фильма должен быть положительным");
         }

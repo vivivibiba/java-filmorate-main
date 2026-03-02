@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -10,7 +11,6 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.validator.UserValidator;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -26,9 +26,8 @@ public class UserController {
     private int nextId = 1;
 
     @PostMapping
-    public User create(@RequestBody User user) {
-        UserValidator.validate(user);
-
+    public User create(@Valid @RequestBody User user) {
+        setNameToLoginIfBlank(user);
         user.setId(nextId++);
         users.put(user.getId(), user);
 
@@ -37,9 +36,8 @@ public class UserController {
     }
 
     @PutMapping
-    public User update(@RequestBody User user) {
-        UserValidator.validate(user);
-
+    public User update(@Valid @RequestBody User user) {
+        setNameToLoginIfBlank(user);
         if (user.getId() == null || user.getId() <= 0) {
             throw new ValidationException("Id пользователя должен быть положительным");
         }
@@ -52,6 +50,12 @@ public class UserController {
 
         log.info("Обновлён пользователь с id {}", user.getId());
         return user;
+    }
+
+    private void setNameToLoginIfBlank(User user) {
+        if (user.getName() == null || user.getName().isBlank()) {
+            user.setName(user.getLogin());
+        }
     }
 
     @GetMapping
