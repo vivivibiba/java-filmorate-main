@@ -1,10 +1,11 @@
 package ru.yandex.practicum.filmorate.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
@@ -19,7 +20,6 @@ public class FilmService {
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
 
-    @Autowired
     public FilmService(FilmStorage filmStorage, UserStorage userStorage) {
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
@@ -32,6 +32,13 @@ public class FilmService {
     }
 
     public Film update(Film film) {
+        if (film.getId() == null || film.getId() <= 0) {
+            throw new ValidationException("Id фильма должен быть положительным");
+        }
+
+        Film savedFilm = findById(film.getId());
+        film.setLikes(savedFilm.getLikes());
+
         Film updatedFilm = filmStorage.update(film);
         log.info("Обновлён фильм с id {}", updatedFilm.getId());
         return updatedFilm;
@@ -45,12 +52,17 @@ public class FilmService {
         if (id <= 0) {
             throw new ValidationException("Id фильма должен быть положительным");
         }
-        return filmStorage.findById(id);
+
+        Film film = filmStorage.findById(id);
+        if (film == null) {
+            throw new NotFoundException("Фильм с id " + id + " не найден");
+        }
+        return film;
     }
 
     public void addLike(int filmId, int userId) {
         Film film = findById(filmId);
-        userStorage.findById(userId);
+        findUserById(userId);
 
         film.getLikes().add(userId);
         log.info("Пользователь с id {} поставил лайк фильму с id {}", userId, filmId);
@@ -58,7 +70,7 @@ public class FilmService {
 
     public void removeLike(int filmId, int userId) {
         Film film = findById(filmId);
-        userStorage.findById(userId);
+        findUserById(userId);
 
         film.getLikes().remove(userId);
         log.info("Пользователь с id {} удалил лайк у фильма с id {}", userId, filmId);
@@ -75,5 +87,17 @@ public class FilmService {
                         .thenComparing(Film::getId))
                 .limit(count)
                 .collect(Collectors.toList());
+    }
+
+    private User findUserById(int id) {
+        if (id <= 0) {
+            throw new ValidationException("Id пользователя должен быть положительным");
+        }
+
+        User user = userStorage.findById(id);
+        if (user == null) {
+            throw new NotFoundException("Пользователь с id " + id + " не найден");
+        }
+        return user;
     }
 }

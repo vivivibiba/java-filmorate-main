@@ -1,8 +1,8 @@
 package ru.yandex.practicum.filmorate.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
@@ -18,7 +18,6 @@ public class UserService {
 
     private final UserStorage userStorage;
 
-    @Autowired
     public UserService(UserStorage userStorage) {
         this.userStorage = userStorage;
     }
@@ -31,7 +30,15 @@ public class UserService {
     }
 
     public User update(User user) {
+        if (user.getId() == null || user.getId() <= 0) {
+            throw new ValidationException("Id пользователя должен быть положительным");
+        }
+
         setNameToLoginIfBlank(user);
+
+        User savedUser = findById(user.getId());
+        user.setFriends(savedUser.getFriends());
+
         User updatedUser = userStorage.update(user);
         log.info("Обновлён пользователь с id {}", updatedUser.getId());
         return updatedUser;
@@ -45,7 +52,12 @@ public class UserService {
         if (id <= 0) {
             throw new ValidationException("Id пользователя должен быть положительным");
         }
-        return userStorage.findById(id);
+
+        User user = userStorage.findById(id);
+        if (user == null) {
+            throw new NotFoundException("Пользователь с id " + id + " не найден");
+        }
+        return user;
     }
 
     public void addFriend(int id, int friendId) {
@@ -80,7 +92,7 @@ public class UserService {
         User user = findById(id);
 
         return user.getFriends().stream()
-                .map(userStorage::findById)
+                .map(this::findById)
                 .collect(Collectors.toList());
     }
 
@@ -92,7 +104,7 @@ public class UserService {
         commonFriends.retainAll(otherUser.getFriends());
 
         return commonFriends.stream()
-                .map(userStorage::findById)
+                .map(this::findById)
                 .collect(Collectors.toList());
     }
 
