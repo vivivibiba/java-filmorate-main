@@ -10,6 +10,8 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -31,6 +33,9 @@ public class Film {
     @NotNull(message = "Продолжительность фильма должна быть указана")
     @Positive(message = "Продолжительность фильма должна быть положительным числом")
     private Integer duration;
+
+    @JsonIgnore
+    private Set<Integer> likes = new LinkedHashSet<>();
 
     @AssertTrue(message = "Дата релиза не может быть раньше 28 декабря 1895 года")
     @JsonIgnore
