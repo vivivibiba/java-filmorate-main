@@ -97,6 +97,10 @@ class FilmValidationTest {
         film.setDescription("Description");
         film.setReleaseDate(LocalDate.of(2000, 1, 1));
         film.setDuration(100);
+
+        Mpa mpa = new Mpa();
+        mpa.setId(1);
+        film.setMpa(mpa);
         return film;
     }
 }
