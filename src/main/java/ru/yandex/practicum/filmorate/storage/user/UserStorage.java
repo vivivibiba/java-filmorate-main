@@ -15,4 +15,6 @@ public interface UserStorage {
     List<User> findAll();
 
     User findById(int id);
+
+    List<User> findAllByIds(List<Integer> ids);
 }
