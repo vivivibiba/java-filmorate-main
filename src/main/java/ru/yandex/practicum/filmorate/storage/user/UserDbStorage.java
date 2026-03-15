@@ -11,6 +11,7 @@ import ru.yandex.practicum.filmorate.model.User;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.util.Collections;
 import java.util.List;
 
 @Component("userDbStorage")
@@ -94,5 +95,26 @@ public class UserDbStorage implements UserStorage {
         } catch (EmptyResultDataAccessException e) {
             return null;
         }
+    }
+
+    @Override
+    public List<User> findAllByIds(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        String sql = "SELECT user_id, email, login, name, birthday FROM users "
+                + "WHERE user_id IN (" + placeholders + ")";
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            User user = new User();
+            user.setId(rs.getInt("user_id"));
+            user.setEmail(rs.getString("email"));
+            user.setLogin(rs.getString("login"));
+            user.setName(rs.getString("name"));
+            user.setBirthday(rs.getDate("birthday").toLocalDate());
+            return user;
+        }, ids.toArray());
     }
 }

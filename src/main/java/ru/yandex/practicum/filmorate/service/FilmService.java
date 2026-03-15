@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
@@ -16,11 +17,14 @@ import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
+@Slf4j
 public class FilmService {
 
     private final FilmStorage filmStorage;
@@ -45,13 +49,17 @@ public class FilmService {
 
     public Film create(Film film) {
         prepareFilm(film);
-        return filmStorage.create(film);
+        Film createdFilm = filmStorage.create(film);
+        log.info("Добавлен фильм с id {}", createdFilm.getId());
+        return createdFilm;
     }
 
     public Film update(Film film) {
         getFilmOrThrow(film.getId());
         prepareFilm(film);
-        return filmStorage.update(film);
+        Film updatedFilm = filmStorage.update(film);
+        log.info("Обновлён фильм с id {}", updatedFilm.getId());
+        return updatedFilm;
     }
 
     public void delete(int id) {
@@ -70,12 +78,14 @@ public class FilmService {
         getFilmOrThrow(filmId);
         getUserOrThrow(userId);
         likeStorage.addLike(filmId, userId);
+        log.info("Лайк поставлен фильму {} пользователем {}", filmId, userId);
     }
 
     public void removeLike(int filmId, int userId) {
         getFilmOrThrow(filmId);
         getUserOrThrow(userId);
         likeStorage.removeLike(filmId, userId);
+        log.info("Лайк удалён у фильма {} пользователем {}", filmId, userId);
     }
 
     public List<Film> getPopular(int count) {
@@ -84,14 +94,24 @@ public class FilmService {
         }
 
         List<Integer> filmIds = likeStorage.getPopularFilmIds(count);
-        List<Film> films = new ArrayList<>();
+        if (filmIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<Film> filmsFromStorage = filmStorage.findAllByIds(filmIds);
+        Map<Integer, Film> filmsById = new HashMap<>();
+        for (Film film : filmsFromStorage) {
+            filmsById.put(film.getId(), film);
+        }
+
+        List<Film> result = new ArrayList<>();
         for (Integer filmId : filmIds) {
-            Film film = filmStorage.findById(filmId);
+            Film film = filmsById.get(filmId);
             if (film != null) {
-                films.add(film);
+                result.add(film);
             }
         }
-        return films;
+        return result;
     }
 
     private Film getFilmOrThrow(int id) {

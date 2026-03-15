@@ -13,8 +13,12 @@ import ru.yandex.practicum.filmorate.model.Mpa;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Component("filmDbStorage")
@@ -140,6 +144,44 @@ public class FilmDbStorage implements FilmStorage {
         }
     }
 
+    @Override
+    public List<Film> findAllByIds(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+
+        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, "
+                + "m.mpa_id, m.name AS mpa_name "
+                + "FROM films f "
+                + "JOIN mpa m ON f.mpa_id = m.mpa_id "
+                + "WHERE f.film_id IN (" + placeholders + ")";
+
+        List<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> {
+            Film film = new Film();
+            film.setId(rs.getInt("film_id"));
+            film.setName(rs.getString("name"));
+            film.setDescription(rs.getString("description"));
+            film.setReleaseDate(rs.getDate("release_date").toLocalDate());
+            film.setDuration(rs.getInt("duration"));
+
+            Mpa mpa = new Mpa();
+            mpa.setId(rs.getInt("mpa_id"));
+            mpa.setName(rs.getString("mpa_name"));
+            film.setMpa(mpa);
+
+            return film;
+        }, ids.toArray());
+
+        Map<Integer, List<Genre>> genresByFilmId = getGenresByFilmIds(ids);
+        for (Film film : films) {
+            film.setGenres(genresByFilmId.getOrDefault(film.getId(), new ArrayList<>()));
+        }
+
+        return films;
+    }
+
     private void updateFilmGenres(Film film) {
         jdbcTemplate.update("DELETE FROM film_genres WHERE film_id = ?", film.getId());
 
@@ -155,9 +197,37 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         String sql = "INSERT INTO film_genres(film_id, genre_id) VALUES (?, ?)";
+        List<Object[]> batchArgs = new ArrayList<>();
         for (Integer genreId : genreIds) {
-            jdbcTemplate.update(sql, film.getId(), genreId);
+            batchArgs.add(new Object[]{film.getId(), genreId});
         }
+
+        jdbcTemplate.batchUpdate(sql, batchArgs);
+    }
+
+    private Map<Integer, List<Genre>> getGenresByFilmIds(List<Integer> filmIds) {
+        if (filmIds == null || filmIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        String placeholders = String.join(",", Collections.nCopies(filmIds.size(), "?"));
+        String sql = "SELECT fg.film_id, g.genre_id, g.name "
+                + "FROM film_genres fg "
+                + "JOIN genres g ON fg.genre_id = g.genre_id "
+                + "WHERE fg.film_id IN (" + placeholders + ") "
+                + "ORDER BY fg.film_id, g.genre_id";
+
+        Map<Integer, List<Genre>> result = new HashMap<>();
+        jdbcTemplate.query(sql, rs -> {
+            int filmId = rs.getInt("film_id");
+            Genre genre = new Genre();
+            genre.setId(rs.getInt("genre_id"));
+            genre.setName(rs.getString("name"));
+
+            result.computeIfAbsent(filmId, key -> new ArrayList<>()).add(genre);
+        }, filmIds.toArray());
+
+        return result;
     }
 
     private List<Genre> getGenresByFilmId(int filmId) {

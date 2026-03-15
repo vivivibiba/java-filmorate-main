@@ -15,4 +15,6 @@ public interface FilmStorage {
     List<Film> findAll();
 
     Film findById(int id);
+
+    List<Film> findAllByIds(List<Integer> ids);
 }
